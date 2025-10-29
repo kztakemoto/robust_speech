@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from tqdm import tqdm
+
 import robust_speech as rs
 from robust_speech.adversarial.attacks.attacker import Attacker
 from robust_speech.adversarial.utils import (
@@ -182,11 +184,11 @@ def smoothed_pgd_loop(
         eps_iter = eps_iter.unsqueeze(1)
     delta.requires_grad_()
     
-    for _ in range(nb_iter):
+    for iter_idx in tqdm(range(nb_iter), desc="PGD Iterations", position=0):
         # Compute smoothed gradient by averaging over m samples
         smoothed_grad = torch.zeros_like(delta)
         
-        for i in range(smoothing_m):
+        for i in tqdm(range(smoothing_m), desc=f"Smoothing (iter {iter_idx+1}/{nb_iter})", position=1, leave=False):
             # Add Gaussian noise
             noise = torch.randn_like(delta) * smoothing_sigma
             
@@ -357,7 +359,6 @@ def pgd_loop_with_return_delta(
     wav_adv = torch.clamp(wav_init + delta, clip_min, clip_max)
     return wav_adv, delta
 
-
 def smoothed_pgd_loop_with_return_delta(
     batch,
     asr_brain,
@@ -377,41 +378,6 @@ def smoothed_pgd_loop_with_return_delta(
     """
     Iteratively maximize the loss over the input using smoothed gradients.
     Also returns the perturbation delta.
-
-    Arguments
-    ---------
-    asr_brain: rs.adversarial.brain.ASRBrain
-       brain object.
-    eps: float
-       maximum distortion.
-    nb_iter: int
-       number of iterations.
-    eps_iter: float
-       attack step size.
-    delta_init: (optional) tensor
-       initial perturbation.
-    minimize: bool
-       if True, minimize the loss (for targeted attacks).
-    order: (optional) int
-       the order of maximum distortion (inf or 2).
-    clip_min: (optional) float
-       mininum value per input dimension.
-    clip_max: (optional) float
-       maximum value per input dimension.
-    l1_sparsity: optional float
-       sparsity value for L1 projection.
-    existing_perturbation: (optional) tensor
-       use existing perturbation instead of computing new one.
-    smoothing_m: int
-       number of samples for gradient smoothing (default: 20).
-    smoothing_sigma: float
-       standard deviation of Gaussian noise for smoothing (default: 0.01).
-
-    Returns
-    -------
-    tuple: (wav_adv, delta)
-        wav_adv: tensor containing the perturbed input.
-        delta: tensor containing the perturbation.
     """
     wav_init, wav_lens = batch.sig
     if delta_init is not None:
@@ -424,11 +390,13 @@ def smoothed_pgd_loop_with_return_delta(
     delta.requires_grad_()
     
     if existing_perturbation is None:
-        for _ in range(nb_iter):
+        # 外側のプログレスバー（イテレーション）
+        for iter_idx in tqdm(range(nb_iter), desc="PGD Iterations", position=0):
             # Compute smoothed gradient by averaging over m samples
             smoothed_grad = torch.zeros_like(delta)
             
-            for i in range(smoothing_m):
+            # 内側のプログレスバー（サンプリング）
+            for i in tqdm(range(smoothing_m), desc=f"Smoothing (iter {iter_idx+1}/{nb_iter})", position=1, leave=False):
                 # Add Gaussian noise
                 noise = torch.randn_like(delta) * smoothing_sigma
                 
@@ -1195,4 +1163,3 @@ class MaxSNRPGDAttack(ASRLinfPGDAttack):
         self.eps = 1.0
         batch.to(save_device)
         return res.to(save_device)
-        
