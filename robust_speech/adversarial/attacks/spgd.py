@@ -175,6 +175,10 @@ def smoothed_pgd_loop(
     tensor containing the perturbed input.
     """
     wav_init, wav_lens = batch.sig
+
+    # check input range
+    print(f"Input range: min={wav_init.min().item():.6f}, max={wav_init.max().item():.6f}, std={wav_init.std().item():.6f}")
+
     if delta_init is not None:
         delta = delta_init
     else:
@@ -380,6 +384,10 @@ def smoothed_pgd_loop_with_return_delta(
     Also returns the perturbation delta.
     """
     wav_init, wav_lens = batch.sig
+
+    # check input range
+    print(f"Input range: min={wav_init.min().item():.6f}, max={wav_init.max().item():.6f}, std={wav_init.std().item():.6f}")
+
     if delta_init is not None:
         delta = delta_init
     else:
